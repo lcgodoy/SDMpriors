@@ -1,4 +1,4 @@
-#Gaussian Process Species Distribution Models with physiological priors, following the approach described in Golding & Purse (2016) but without relying on the GRaF package
+#Gaussian Process Species Distribution Models with physiological priors, following the approach described in Golding & Purse (2016) but without relying on the GRaF package, https://github.com/goldingn/GRaF
 
 # Core GP implementation with Laplace approximation
 # Physiological prior functions
@@ -57,7 +57,8 @@ gp_sdm <- function(formula, data, mean_function = NULL,
   
   # Set default mean function if not provided
   if (is.null(mean_function)) {
-    mean_function <- function(X) rep(0.5, nrow(X)) #or set to 0, try constant 0.5
+    mean_function <- function(X) rep(nrow(data[which(data$presence==1),])/nrow(data), nrow(X))
+    #mean_function <- function(X) rep(0.0, nrow(X)) #or set to 0, try constant 0.5
   }
   
   # Compute prior mean
@@ -582,6 +583,8 @@ plot.prior<- ggplot() +
  #   mean_function = my_prior
  # )
 
+#roughly estimate length scales
+
 # Fit models with optimized lengthscales
 # Fit GP model without physiological prior
 gp_flat <- gp_sdm(
@@ -693,6 +696,9 @@ abline(a=0, b=1)
 
 plot(models$RMSE1, models$RMSE2)
 abline(a=0, b=1)
+
+#write out summary
+write.csv(models, "./out/model_stats.csv")
 
 #================
 #alternative visualization of model predictions

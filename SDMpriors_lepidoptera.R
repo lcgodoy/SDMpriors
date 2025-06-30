@@ -1,13 +1,15 @@
 
 #Try out lepidoptera models using IBIS iSDM
 
-desktop<- "n"
+desktop<- "y"
 
 library(ggplot2)
 library(reshape)
 library(viridis)
 library(patchwork)
 library(raster)
+library(splitTools) #divide into test and training
+library(dismo) #for pseudo absences
 
 #Data access: https://github.com/RebeccaLovell/OrangeTipAnalyses/blob/main/DataPreparation.R
 
@@ -75,6 +77,7 @@ x.dat<-read.csv("UKmoths/moths/processed/XData.csv")
 #presence absence
 y.dat<-read.csv("UKmoths/moths/processed/YData.csv")
 
+library(ncdf4)
 #================
 #Update UK data
 # HadUK grid daily temperature and precipitation data is available here https://catalogue.ceda.ac.uk/uuid/4dc8450d889a491ebb20e724debe2dfb 
@@ -83,18 +86,27 @@ y.dat<-read.csv("UKmoths/moths/processed/YData.csv")
 #use bioclim? https://www.worldclim.org/data/bioclim.html
 
 #https://catalogue.ceda.ac.uk/uuid/4dc8450d889a491ebb20e724debe2dfb/
+#tmax<- nc_open("./UKclimate/tasmax_hadukgrid_uk_60km_seas-20y_198101-200012.nc")
+#tmax<- terra::rast("./UKclimate/tasmax_hadukgrid_uk_60km_seas-20y_198101-200012.nc")
 
-library(ncdf4)
+#HadUK provisional data
+#https://www.metoffice.gov.uk/hadobs/hadukgrid/data/download_2025-05.html
 
-tmax<- nc_open("./UKclimate/tasmax_hadukgrid_uk_60km_seas-20y_198101-200012.nc")
+tmax<- nc_open("./UKclimate/tasmax_hadukgrid_uk_5km_day_20250501-20250531.nc")
 
-time <- ncvar_get(tmax,"time");# extracts time, days
-ncvar_get(tmax,"tasmax_1")
+time <- ncvar_get(tmax,"time");# extracts time, days 
+lats<- ncvar_get(tmax,"projection_x_coordinate")
+lons<- ncvar_get(tmax,"projection_y_coordinate")
+tasmax<- ncvar_get(tmax,"tasmax")
 
-tmax<- terra::rast("./UKclimate/tasmax_hadukgrid_uk_60km_seas-20y_198101-200012.nc")
+tmax<- terra::rast("./UKclimate/tasmax_hadukgrid_uk_5km_day_20250501-20250531.nc")
 head(names(tmax))
-tmax[["tasmax_1"]]
+tasmax<- tmax[["tasmax_1"]]
 
+plot(tasmax)
+
+#provisional data
+#https://www.metoffice.gov.uk/hadobs/hadukgrid/data/download_2025-05.html
 
 #================
 #UK butterfly analysis from Buckley et al 2011 Ecology
@@ -165,6 +177,7 @@ speciesk<-5
   library(terra)
   library(uuid)
   library(assertthat)
+  library(sf)
   
   # Don't print out as many messages
   options("ibis.setupmessages" = FALSE)
@@ -188,7 +201,8 @@ speciesk<-5
   
   # Load species points
   xy.dat$Observed=1
- pts=st_as_sf(xy.dat[,-1], coords=c("Longitude","Latitude"), crs="+proj=utm +zone=30")
+  
+  pts=st_as_sf(xy.dat[,-1], coords=c("Longitude","Latitude"), crs="+proj=utm +zone=30")
   
   # This data needs to be in sf format and key information is that
   # the model knows where occurrence data is stored (e.g. how many observations per entry) as
@@ -301,7 +315,71 @@ speciesk<-5
   p1 <- partial(mod1, pp$varnames(), plot = TRUE)
   p2 <- partial(mod2, pp$varnames(), plot = TRUE)
   
+  #summarize and evaluate
+  plot(mod1)
+  #summarize coefficients
+  summary(mod1)
+  
+  #Continuous validations use error metrics (e.g. RMSE) to infer prediction precision (Jung, 2022), while discrete validations can be calculated on a-priori mapped thresholded distributions with a range of different options from binary to normalized estimation
+  #area under the curve (AUC) and true skill statistic (TSS)
+  validate(mod1)
+  validate(mod2)
+  #validate the model with independent data
+  #validate(mod1, point=XXXX)
+  
+  coef(mod1)
+  limiting(mod1)
+  
+  
+  #Jung 2023
+  #https://doi.org/10.1016/j.ecoinf.2023.102127
+  #Another idea is to enable support for dedicated equations, for example for population growth or microclimatic thresholds (Schouten et al., 2020), and integrate them into inference and projections (Talluto et al., 2016).
 
+  #-------
+  #make pseudoabsent for test, train
   
+  #----------------------------
+  #generate pseudo absence
+ 
+  # define circles with a radius of 50 km around the subsampled points
+  x = circles(xy.dat[,c("Longitude","Latitude")], d=50000, lonlat=T)
+  # draw random points that must fall within the circles in object x
+  bg = spsample(x@polygons, 1000, type='random', iter=100)
   
+  # #extract climate variables
+  # # pulling bioclim values
+  # occ_bc = extract(BClim, occ[,c("decimalLongitude","decimalLatitude")] ) # for the subsampled presence points
+  # bg_bc = extract(BClim, bg) # for the pseudo-absence points
+  # occ_bc = data.frame(lon=occ$decimalLongitude, lat=occ$decimalLatitude, occ_bc)
+  # bgpoints = bg@coords
+  # colnames(bgpoints) = c("lon","lat")
+  # bg_bc = data.frame(cbind(bgpoints,bg_bc))
+  # 
+  # # Create dataframe from bioclim and presense/absance.
+  # pres<-rep(1,dim(occ_bc)[1])
+  # temp1<-data.frame(pres,occ_bc[,3:21])
+  # pres<-rep(0,dim(bg_bc)[1])
+  # temp2<-data.frame(pres,bg_bc[,3:21])
+  # df<-rbind(temp1,temp2)
+  # head(df,5)
+  # 
+  # locs= occ_bc
+  # 
+  # #------------
+  # #split into test and train
+  # set.seed(3451)
+  # inds <- partition(xy.dat$Observed, p = c(train = 0.8, test = 0.2))
+  # 
+  # #or use folds: folds <- create_folds(train$Sepal.Length, k = 5, seed = 2734)
+  # 
+  # str(inds)
+  # #> List of 3
+  # #>  $ train: int [1:81] 2 3 6 7 8 10 11 18 19 20 ...
+  # #>  $ valid: int [1:34] 1 12 14 15 27 34 36 38 42 48 ...
+  # #>  $ test : int [1:35] 4 5 9 13 16 17 25 39 41 45 ...
+  # 
+  # train <- iris[inds$train, ]
+  # valid <- iris[inds$valid, ]
+  # test <- iris[inds$test, ]
+  # 
   
