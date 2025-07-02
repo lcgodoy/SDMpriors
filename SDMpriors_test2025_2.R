@@ -559,6 +559,18 @@ my_prior <- function(data, temp_col, ctmin=dat$tmin[spec.k], ctmax=dat$tmax[spec
   )
 }
 
+#"beta", "gaussian", "poly", "threshold", "sigmoid", "tpc"
+
+my_prior2 <- function(data, temp_col, ctmin=dat$tmin[spec.k], ctmax=dat$tmax[spec.k]) {
+  temperature_prior(
+    data, 
+    temp_col="trmax",
+    ctmin = ctmin, 
+    ctmax = ctmax,
+    type= "sigmoid"
+  )
+}
+
 #-----------------
 #make predictions
 pred= temperature_prior(pa, temp_col="trmax", ctmin=dat$tmin[spec.k], ctmax=dat$tmax[spec.k], type="tpc")
@@ -590,6 +602,7 @@ plot.prior<- ggplot() +
 gp_flat <- gp_sdm(
   pres ~ trmax,
   data = train_data,
+  mean_function = my_prior2,
   lengthscales = 5 #opt_result$lengthscales #5
 )
 
