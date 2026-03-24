@@ -27,8 +27,7 @@ dat= dat[!is.na(dat$tmax) & !is.na(dat$tmin),]
 #subset to critical rather than lethal
 
 #write out list
-setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/SDMpriors/out/presabs/")
-write.csv(dat,"SpeciesList.csv")
+write.csv(dat,"out/presabs/SpeciesList.csv")
 
 #species name to enable match
 dat$spec = gsub("_"," ",dat$species)
@@ -49,9 +48,9 @@ occ <- occ_data(scientificName=dat$spec[spec.k], limit=1000)
 occ <- occ$data
 
 #write out
-filename<-paste("GBIFloc_", dat$spec[spec.k],".csv", sep="")
+filename<-paste("GBIFloc_", janitor::make_clean_names(dat$spec[spec.k]),".csv", sep="")
 
-write.csv(occ[,1:5],filename)
+write.csv(occ[,1:5], file.path("data/gbif", filename))
 
 } #end looop species
 
@@ -72,8 +71,8 @@ spec.k=56
 #set up map
 bbox <- ggmap::make_bbox(decimalLongitude, decimalLatitude, occ, f = 0.1)
 
-map_loc <- get_map(location = bbox, source = 'google', maptype = 'terrain')
-map1=ggmap(map_loc, margins=FALSE) #
+map_loc <- ggmap::get_map(location = bbox, source = 'google', maptype = 'terrain')
+map1= ggmap::ggmap(map_loc, margins=FALSE) #
 
 map1 +geom_point(data=occ, aes(y=decimalLatitude, x=decimalLongitude) ) + coord_cartesian() 
 
@@ -114,7 +113,7 @@ BClim = getData("worldclim", var="bio", res=2.5)
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/SDMpriors/data/microclim/0_shade/")
 #use july for max
-temp= brick("TA1cm_soil_0_7.nc")
+temp= brick("data/microclim/0_shade/TA1cm_soil_0_7.nc")
 tmax_0= mean(temp) #or max
 #use jan for min
 temp= brick("TA1cm_soil_0_1.nc")

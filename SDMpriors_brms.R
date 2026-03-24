@@ -1,4 +1,4 @@
-#load libraries
+##load libraries
 library(ggplot2)
 library(brms)
 library(mgcv)
@@ -8,68 +8,68 @@ library(raster)
 library(reshape2)
 library(cowplot)
 library(ROCR)
-#library(PRoC)
+##library(PRoC)
 
-#RESOURCES 
-#paper: 
-#https://www.nature.com/articles/s41598-018-38416-3
+##RESOURCES 
+##paper: 
+##https://www.nature.com/articles/s41598-018-38416-3
 
-#brms info:
-#https://discourse.mc-stan.org/t/help-understanding-and-setting-informative-priors-in-brms/9574
-#https://www.rensvandeschoot.com/tutorials/brms-priors/
-#https://www.rensvandeschoot.com/tutorials/generalised-linear-models-with-brms/
-#https://www.rensvandeschoot.com/tutorials/brms-started/
-#https://discourse.mc-stan.org/t/space-time-models-in-stan-brms/4735
+##brms info:
+##https://discourse.mc-stan.org/t/help-understanding-and-setting-informative-priors-in-brms/9574
+##https://www.rensvandeschoot.com/tutorials/brms-priors/
+##https://www.rensvandeschoot.com/tutorials/generalised-linear-models-with-brms/
+##https://www.rensvandeschoot.com/tutorials/brms-started/
+##https://discourse.mc-stan.org/t/space-time-models-in-stan-brms/4735
 
-#setwd
+##setwd
 desktop<- "y"
 
-#--------------------------------
-# load physiological priors from Sunday database
+##--------------------------------
+## load physiological priors from Sunday database
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared Drives/TrEnCh/Projects/SDMpriors/")
 if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared Drives/TrEnCh/Projects/SDMpriors/")
 
 dat= read.csv("out/presabs/SpeciesList_PresAbs.csv")
 
-#DATA CAN BE DOWNLOADED TO SHARED DRIVE FROM HERE: https://figshare.com/collections/microclim_Global_estimates_of_hourly_microclimate_based_on_long_term_monthly_climate_averages/878253
-#USED 1cm Air temperature
+##DATA CAN BE DOWNLOADED TO SHARED DRIVE FROM HERE: https://figshare.com/collections/microclim_Global_estimates_of_hourly_microclimate_based_on_long_term_monthly_climate_averages/878253
+##USED 1cm Air temperature
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/SDMpriors/")
 if(desktop=="n") setwd("/Users/lbuckley/Google Drive/My Drive/Buckley/Work/SDMpriors/")
 
-#load all clim data
-#use july for max
+##load all clim data
+##use july for max
 temp= brick("data/microclim/0_shade/TA1cm_soil_0_7.nc")
-tmax_0= mean(temp) #or max
+tmax_0= mean(temp) ##or max
 
-#use july for max
+##use july for max
 temp= brick("data/microclim/50_shade/TA1cm_soil_50_7.nc")
 tmax_50= mean(temp)
 
-#use july for max
+##use july for max
 temp= brick("data/microclim/100_shade/TA1cm_soil_100_7.nc")
 tmax_100= mean(temp)
 
-#-----
-#ESTIMATE TEMPERATURE PRIORS
-#set up for inverse gamma, normal, log normal
+##-----
+##ESTIMATE TEMPERATURE PRIORS
+##set up for inverse gamma, normal, log normal
 
-#cummulative density function
-#assign 5% above and below CTmin and max
+##cummulative density function
+##assign 5% above and below CTmin and max
 
 spec.k=1
 
-#Calculate parameters for inverse beta
-#https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html
+##Calculate parameters for inverse beta
+##https://betanalpha.github.io/assets/case_studies/gp_part3/part3.html
 error_invgamma=function(comb, CTmin, CTmax){
   (abs(pinvgamma(CTmin, comb[1], comb[2])-0.05) + abs(pinvgamma(CTmax, comb[1], comb[2])-0.95))/2
 }
 
-#error_normal=function(comb, CTmin, CTmax){
-#  (abs(pnorm(CTmin, comb[1], comb[2])-0.05) + abs(pnorm(CTmax, comb[1], comb[2])-0.95))/2
-#}
+##error_normal=function(comb, CTmin, CTmax){
+##  (abs(pnorm(CTmin, comb[1], comb[2])-0.05) + abs(pnorm(CTmax, comb[1], comb[2])-0.95))/2
+##}
 
-#try stronger constraint
+##try stronger constraint
 error_normal=function(comb, CTmin, CTmax){
   (abs(pnorm(CTmin, comb[1], comb[2])-0.001) + abs(pnorm(CTmax, comb[1], comb[2])-0.999))/2
 }
@@ -79,9 +79,9 @@ error_lnormal=function(comb, CTmin, CTmax){
 }
 
 param_irvgamma=function(CTmin, CTmax){
-combs=expand.grid(shape=seq(1,50,1),rate=seq(1,50,1))
-error= apply(combs, MARGIN=1,error_invgamma, CTmin=CTmin, CTmax=CTmax)
-return(combs[which.min(error),])
+  combs=expand.grid(shape=seq(1,50,1),rate=seq(1,50,1))
+  error= apply(combs, MARGIN=1,error_invgamma, CTmin=CTmin, CTmax=CTmax)
+  return(combs[which.min(error),])
 }
 
 param_normal=function(CTmin, CTmax){
@@ -108,8 +108,8 @@ params= param_lnormal(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
 s <- seq(0, 5, 0.1)
 plot(s, dlnorm(s, params$mean, params$sd), type = 'l')
 
-#-----------------------------
-#Plot priors and Pres Absence
+##-----------------------------
+##Plot priors and Pres Absence
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared Drives/TrEnCh/Projects/SDMpriors/")
 if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared Drives/TrEnCh/Projects/SDMpriors/")
@@ -120,8 +120,9 @@ pa.plots <- vector('list', nrow(dat))
 
 for(spec.k in 1:nrow(dat)){
 
-  #load presence absence
-  pa= read.csv(paste("out/presabs/PresAbs_",dat$spec[spec.k],".csv",sep=""))
+  ##load presence absence
+  pa= read.csv(paste("out/presabs/PresAbs_",janitor::make_clean_names(dat$spec[spec.k]),
+                     ".csv",sep=""))
 
   params= param_normal(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
   lp= as.data.frame(cbind(temps, dnorm(temps, params$mean, params$sd)))
@@ -139,193 +140,194 @@ for(spec.k in 1:nrow(dat)){
     geom_point(data=dat[spec.k,], aes(x=tmax, y = 0), color="red")
   
   pa.plots[[spec.k]] <-print(pa.plot)
-} #end loop species
+} ##end loop species
 
 library(gridExtra)
 
 ggsave(
-  filename = "out/priors_pa.pdf", 
-  plot = marrangeGrob(pa.plots, nrow=4, ncol=4), 
-  width = 15, height = 9
+    filename = "out/priors_pa.pdf", 
+    plot = marrangeGrob(pa.plots, nrow=4, ncol=4), 
+    width = 15, height = 9
 )
 
-#==================================================
-#BUILD MODELS ACROSS SPECIES
+##==================================================
+##BUILD MODELS ACROSS SPECIES
 
 pdf("out/priors_brms.pdf", height = 10, width = 12)
 
 par(mfrow=c(5,4), cex=1.2, mar=c(3, 3, 1.5, 0.5), oma=c(0,0,0,0), lwd=1, bty="o", tck=0.02, mgp=c(1, 0, 0))
 
-#loop species
+##loop species
 for(spec.k in 1:nrow(dat)){
-#spec.k=4
+  ##spec.k=4
 
-#load presence absence
-pa= read.csv(paste("out/presabs/PresAbs_",dat$spec[spec.k],".csv",sep=""))
+  ##load presence absence
+  pa= read.csv(paste("out/presabs/PresAbs_",janitor::make_clean_names(dat$spec[spec.k]),
+                     ".csv",sep=""))
 
-#----
-#plot localities and temperature
-#crop to observed range 
-ext = extent(rbind(range(pa$lon), range(pa$lat))) # define the extent
-# extent
-ext[1]= ext[1]-10; ext[2]= ext[2]+10; ext[3]=ext[3]-10; ext[4]=ext[4]+10
-#crop
-tmax0=  crop(tmax_0, ext)
-tmax50=  crop(tmax_50, ext)
-tmax100=  crop(tmax_100, ext)
+  ##----
+  ##plot localities and temperature
+  ##crop to observed range 
+  ext = extent(rbind(range(pa$lon), range(pa$lat))) ## define the extent
+  ## extent
+  ext[1]= ext[1]-10; ext[2]= ext[2]+10; ext[3]=ext[3]-10; ext[4]=ext[4]+10
+  ##crop
+  tmax0=  crop(tmax_0, ext)
+  tmax50=  crop(tmax_50, ext)
+  tmax100=  crop(tmax_100, ext)
 
-#------
-#model thermoregulation
-#Set up prior
-CTmin1= dat$tmin[spec.k]
-CTmax1= dat$tmax[spec.k]
-#approximate Topt, but fix based on data
-Topt= CTmin1+ (CTmax1-CTmin1)*0.7
-#-----
-# sun to shade
-# thermoregulation scenario
+  ##------
+  ##model thermoregulation
+  ##Set up prior
+  CTmin1= dat$tmin[spec.k]
+  CTmax1= dat$tmax[spec.k]
+  ##approximate Topt, but fix based on data
+  Topt= CTmin1+ (CTmax1-CTmin1)*0.7
+  ##-----
+  ## sun to shade
+  ## thermoregulation scenario
 
-#max
-tmax0.dif= abs(tmax0 - Topt) 
-tmax50.dif= abs(tmax50 - Topt) 
-tmax100.dif= abs(tmax100 - Topt) 
-tmax.dif= stack(tmax0.dif, tmax50.dif, tmax100.dif)
-tr.ind= which.min(tmax.dif)
+  ##max
+  tmax0.dif= abs(tmax0 - Topt) 
+  tmax50.dif= abs(tmax50 - Topt) 
+  tmax100.dif= abs(tmax100 - Topt) 
+  tmax.dif= stack(tmax0.dif, tmax50.dif, tmax100.dif)
+  tr.ind= which.min(tmax.dif)
 
-tr<- tmax0
-tr[]<-NA
-tr[tr.ind==1]<- tmax0[tr.ind==1]
-tr[tr.ind==2]<- tmax50[tr.ind==2]
-tr[tr.ind==3]<- tmax100[tr.ind==3]
-trmax=tr
+  tr<- tmax0
+  tr[]<-NA
+  tr[tr.ind==1]<- tmax0[tr.ind==1]
+  tr[tr.ind==2]<- tmax50[tr.ind==2]
+  tr[tr.ind==3]<- tmax100[tr.ind==3]
+  trmax=tr
 
-#------
-#Plot 
-#plot(trmax, main=dat$spec[spec.k])
-#points(pa$lon, pa$lat, pch=20, cex=0.5, col="darkgreen")
+  ##------
+  ##Plot 
+  ##plot(trmax, main=dat$spec[spec.k])
+  ##points(pa$lon, pa$lat, pch=20, cex=0.5, col="darkgreen")
 
-#extract values
-pts= rasterToPoints(trmax)
-#pts= rasterToPoints(tmax50)
-colnames(pts)=c("lon","lat","trmax")
-pts= as.data.frame(pts)
+  ##extract values
+  pts= rasterToPoints(trmax)
+  ##pts= rasterToPoints(tmax50)
+  colnames(pts)=c("lon","lat","trmax")
+  pts= as.data.frame(pts)
 
-#------
-#GP model
-#update priors
+  ##------
+  ##GP model
+  ##update priors
 
-#get prior
-prior<- get_prior(pres ~ gp(trmax), data=pa, 
-                  family=bernoulli(link = "logit"))
+  ##get prior
+  prior<- get_prior(pres ~ gp(trmax), data=pa, 
+                    family=bernoulli(link = "logit"))
 
-#intercept
-prior$prior[1]="student_t(3, 0, 10)"
-#Half student_t?
-#need to normalize data?
+  ##intercept
+  prior$prior[1]="student_t(3, 0, 10)"
+  ##Half student_t?
+  ##need to normalize data?
 
-#sd of gp
-#prior$prior[4]="student_t(3, 0, 1)"
-#REDUCE SD
-prior$prior[4]= "student_t(3, 0, .1)"
+  ##sd of gp
+  ##prior$prior[4]="student_t(3, 0, 1)"
+  ##REDUCE SD
+  prior$prior[4]= "student_t(3, 0, .1)"
 
-#length scale
-#params= param_irvgamma(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
-params= param_normal(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
-#params= param_lnormal(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
+  ##length scale
+  ##params= param_irvgamma(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
+  params= param_normal(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
+  ##params= param_lnormal(dat[spec.k,"tmin"],dat[spec.k,"tmax"])
 
-#prior.in= paste("inv_gamma(",params$shape,",",params$rate,")",sep="")
-prior.in= paste("normal(",params$mean,",",params$sd,")",sep="")
-#prior.in= paste("lognormal(",params$mean,",",params$sd,")",sep="")
-prior$prior[3] <- prior.in
-#Kotta uses log gaussian
+  ##prior.in= paste("inv_gamma(",params$shape,",",params$rate,")",sep="")
+  prior.in= paste("normal(",params$mean,",",params$sd,")",sep="")
+  ##prior.in= paste("lognormal(",params$mean,",",params$sd,")",sep="")
+  prior$prior[3] <- prior.in
+  ##Kotta uses log gaussian
 
-## verify that the priors indeed found their way into Stan's model code
-#make_stancode(pres ~ gp(trmax), data=pa, 
-#              family=bernoulli(link = "logit"),
-#              prior = prior)
+#### verify that the priors indeed found their way into Stan's model code
+  ##make_stancode(pres ~ gp(trmax), data=pa, 
+  ##              family=bernoulli(link = "logit"),
+  ##              prior = prior)
 
-# fit a simple GP model #gp()
-fit_pp <- brm(pres ~ gp(trmax, k=5, c=1.25), data=pa, 
-            family=bernoulli(link = "logit"),
-            prior=prior,
-            chains = 2)
-#summary(fit_bp)
+  ## fit a simple GP model ##gp()
+  fit_pp <- brm(pres ~ gp(trmax, k=5, c=1.25), data=pa, 
+                family=bernoulli(link = "logit"),
+                prior=prior,
+                chains = 2)
+  ##summary(fit_bp)
 
-#---
-#fit no physiological prior
-#get prior
-prior<- get_prior(pres ~ gp(trmax), data=pa, 
-                  family=bernoulli(link = "logit"))
+  ##---
+  ##fit no physiological prior
+  ##get prior
+  prior<- get_prior(pres ~ gp(trmax), data=pa, 
+                    family=bernoulli(link = "logit"))
 
-#intercept
-prior$prior[1]="student_t(3, 0, 10)"
-#Half student_t?
-#need to normalize data?
+  ##intercept
+  prior$prior[1]="student_t(3, 0, 10)"
+  ##Half student_t?
+  ##need to normalize data?
 
-#sd of gp
-prior$prior[4]="student_t(3, 0, 1)"
+  ##sd of gp
+  prior$prior[4]="student_t(3, 0, 1)"
 
-fit_np <- brm(pres ~ gp(trmax, k=5, c=1.25), data=pa, 
-              family=bernoulli(link = "logit"),
-              #prior=prior,
-              chains = 2)
+  fit_np <- brm(pres ~ gp(trmax, k=5, c=1.25), data=pa, 
+                family=bernoulli(link = "logit"),
+                ##prior=prior,
+                chains = 2)
 
-#---------------
-#PLOTS
+  ##---------------
+  ##PLOTS
 
-#plot GP with phys prior
-me_pp <- conditional_effects(fit_pp, nsamples = 200, spaghetti = TRUE)
-resp_pp= plot(me_pp, ask = FALSE, points = TRUE, ylim=c(0,1))
+  ##plot GP with phys prior
+  me_pp <- conditional_effects(fit_pp, nsamples = 200, spaghetti = TRUE)
+  resp_pp= plot(me_pp, ask = FALSE, points = TRUE, ylim=c(0,1))
 
-#plot GP with no phys prior
-me_np<- conditional_effects(fit_np, nsamples = 200, spaghetti = TRUE)
-resp_np= plot(me_np, ask = FALSE, points = TRUE, ylim=c(0,1))
+  ##plot GP with no phys prior
+  me_np<- conditional_effects(fit_np, nsamples = 200, spaghetti = TRUE)
+  resp_np= plot(me_np, ask = FALSE, points = TRUE, ylim=c(0,1))
 
-#predictions
-pred_pp= predict(fit_pp, newdata=pts)
-pred_np= predict(fit_np, newdata=pts)
-#combine
-pts= cbind(pts, pred_pp[,1], pred_np[,1])
-colnames(pts)[(ncol(pts)-1):ncol(pts)]=c("occ_pp","occ_np")
+  ##predictions
+  pred_pp= predict(fit_pp, newdata=pts)
+  pred_np= predict(fit_np, newdata=pts)
+  ##combine
+  pts= cbind(pts, pred_pp[,1], pred_np[,1])
+  colnames(pts)[(ncol(pts)-1):ncol(pts)]=c("occ_pp","occ_np")
 
-#plot
-#to long format
-pts.l <- melt(pts, id=c("lon","lat","trmax"))
-#presence points
-pres= subset(pa, pa$pres=="1")
-pres$variable="occ_pp"
-#replicate pres for plotting
-pres2<- pres
-pres2$variable="occ_np"
-pres.all= rbind(pres, pres2)
+  ##plot
+  ##to long format
+  pts.l <- melt(pts, id=c("lon","lat","trmax"))
+  ##presence points
+  pres= subset(pa, pa$pres=="1")
+  pres$variable="occ_pp"
+  ##replicate pres for plotting
+  pres2<- pres
+  pres2$variable="occ_np"
+  pres.all= rbind(pres, pres2)
 
-#trmax
-tr.plot=ggplot(pts, aes(lat, lon, fill= trmax)) + 
-  geom_tile()+scale_fill_viridis(na.value = 'grey')
+  ##trmax
+  tr.plot=ggplot(pts, aes(lat, lon, fill= trmax)) + 
+    geom_tile()+scale_fill_viridis(na.value = 'grey')
 
-#predictions
-occ.plot= ggplot(pts.l, aes(lat, lon)) + 
-  geom_tile(aes(fill= value))+scale_fill_viridis(na.value = 'grey') +facet_wrap(~variable, nrow=1)+
-  ggtitle(dat$species[spec.k])
-#add localities
-occ.plot= occ.plot +geom_point(pres.all, mapping=aes(lat, lon, color="red"))
+  ##predictions
+  occ.plot= ggplot(pts.l, aes(lat, lon)) + 
+    geom_tile(aes(fill= value))+scale_fill_viridis(na.value = 'grey') +facet_wrap(~variable, nrow=1)+
+    ggtitle(dat$species[spec.k])
+  ##add localities
+  occ.plot= occ.plot +geom_point(pres.all, mapping=aes(lat, lon, color="red"))
 
-#combine plots
-print(occ.plot)
-#plot_grid(tr.plot, occ.plot, resp_np, resp_pp)
+  ##combine plots
+  print(occ.plot)
+  ##plot_grid(tr.plot, occ.plot, resp_np, resp_pp)
 
-} #end loop species
+} ##end loop species
 dev.off()
 
-#---------------------------
-#ROC assessments
-#statistics
+##---------------------------
+##ROC assessments
+##statistics
 pred_pp= predict(fit_pp)
 pred_np= predict(fit_np)
-#make prediction object
+##make prediction object
 pred_pp= prediction(pred_pp[,1], pa$pres)
 pred_np= prediction(pred_np[,1], pa$pres)
-#performance metrics
+##performance metrics
 perf_pp <- performance(pred_pp, measure = "tpr", x.measure = "fpr")
 auc_pp <- performance(pred_pp, measure = "auc")
 auc_pp <- auc_pp@y.values[[1]]
@@ -341,11 +343,11 @@ roc.data_np <- data.frame(fpr=unlist(perf_np@x.values),
                           tpr=unlist(perf_np@y.values),
                           model="NP")
 
-#PLOT ROC
+##PLOT ROC
 plot(roc.data_pp$fpr,roc.data_pp$tpr,type="l",col="red",ylab="TPR",xlab="FPR",main="ROC for GP vs MaxEnt",lwd=3.5)
 lines(roc.data_np$fpr,roc.data_np$tpr,type="l",col="green",lwd=3.5)
-legend(0.6,0.4, # places a legend at the appropriate place 
-       c("PP","NP"), # puts text in the legend
-       lty=c(1,1), # gives the legend appropriate symbols (lines)
+legend(0.6,0.4, ## places a legend at the appropriate place 
+       c("PP","NP"), ## puts text in the legend
+       lty=c(1,1), ## gives the legend appropriate symbols (lines)
        lwd=c(2.5,2.5),col=c("red","green"))
 
