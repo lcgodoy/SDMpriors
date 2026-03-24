@@ -1,0 +1,24 @@
+## R related files
+.RData
+.Rhistory
+.Ruserdata
+.Rproj.user
+
+## Temporary or backup files
+*~
+*\#
+*.bak
+*.swp
+*.swo
+
+## macOS specific
+.DS_Store
+
+## IDE specific (Emacs)
+*#
+
+## Output directory
+out/
+
+## Data directory
+data/
