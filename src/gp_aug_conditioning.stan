@@ -1,3 +1,6 @@
+functions {
+#include utils/conditionals.stan
+}
 data {
   // Observational (Field) Data
   int<lower=1> N_obs;
@@ -11,6 +14,7 @@ data {
 parameters {
   real<lower = 0> rho;
   real<lower = 0> alpha;
+  real<lower = 0> kappa;
   vector[N_obs] eta;  // For non-centered parameterization
 }
 transformed parameters {
@@ -18,31 +22,28 @@ transformed parameters {
   {
     matrix[N_obs, N_obs] K_obs_cond;
     matrix[N_obs, N_obs] L_K_cond;
-    vector[N_obs] mu_cond;
-    // 1. Build the sub-matrices
-    matrix[N_exp, N_exp] K_exp_exp = add_diag(gp_matern52_cov(x_exp, alpha, rho),
-                                              1e-16);
-    matrix[N_obs, N_obs] K_obs_obs = add_diag(gp_matern52_cov(x_obs, alpha, rho),
-                                              1e-16);
-    matrix[N_obs, N_exp] K_obs_exp = gp_matern32_cov(x_obs, x_exp, alpha, rho);
-    // 2. Perform the conditioning using Cholesky decomposition (faster/stabler
-    // than inverse)
-    matrix[N_exp, N_exp] L_exp = cholesky_decompose(K_exp_exp);
-    matrix[N_exp, N_obs] v = mdivide_left_tri_low(L_exp, K_obs_exp');
-    // Calculate Conditional Mean
-    mu_cond = K_obs_exp *
-      mdivide_left_tri_low(L_exp', mdivide_left_tri_low(L_exp, f_exp));
-    // Calculate Conditional Covariance
-    K_obs_cond = K_obs_obs - crossprod(v);
-    L_K_cond = cholesky_decompose(K_obs_cond);
-    // 3. Construct the final latent GP for the observations
-    f_obs = mu_cond + L_K_cond * eta;
+    // Build the sub-matrices
+    matrix[N_exp, N_exp] K_exp_exp =
+      add_diag(gp_matern52_cov(x_exp, kappa * alpha, rho),
+               1e-10);
+    matrix[N_obs, N_obs] K_obs_obs =
+      add_diag(gp_matern52_cov(x_obs, alpha, rho),
+               1e-10);
+    matrix[N_exp, N_obs] K_exp_obs =
+      gp_matern52_cov(x_exp, x_obs, sqrt(kappa) * alpha, rho);
+    // conditional parameters for GP
+    tuple(vector[N_obs], matrix[N_obs, N_obs]) musigma_cond;
+    musigma_cond = gp_cond_pars(f_exp, K_exp_exp, K_obs_obs, K_exp_obs);
+    L_K_cond = cholesky_decompose(musigma_cond.2);
+    // Construct the final latent GP for the observations
+    f_obs = musigma_cond.1 + L_K_cond * eta;
   }
 }
 model {
   // Priors
-  rho ~ inv_gamma(5, 5);
+  rho ~ inv_gamma(2, 1);
   alpha ~ std_normal();
+  kappa ~ std_normal();
   eta ~ std_normal();
   // Likelihood (Only evaluated on the real field data!)
   y_obs ~ bernoulli_logit(f_obs);
