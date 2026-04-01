@@ -84,9 +84,9 @@ param_irvgamma=function(CTmin, CTmax){
   return(combs[which.min(error),])
 }
 
-param_normal=function(CTmin, CTmax){
-  combs=expand.grid(mean=seq(1,50,1),sd=seq(1,50,1))
-  error= apply(combs, MARGIN=1,error_normal, CTmin=CTmin, CTmax=CTmax)
+param_normal=function(CTmin, CTmax) {
+  combs = expand.grid(mean=seq(1,50,1),sd=seq(1,50,1))
+  error = apply(combs, MARGIN = 1, error_normal, CTmin = CTmin, CTmax = CTmax)
   return(combs[which.min(error),])
 }
 

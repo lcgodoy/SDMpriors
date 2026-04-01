@@ -61,15 +61,59 @@ CTmax1 <- species_list$tmax[sp_id]
 ## approximate Topt, but fix based on data
 Topt <- CTmin1 + (CTmax1 - CTmin1) * 0.7
 
+##--- setting up prior ----
+
+## Normal distribution such that P(CTmin1 < x < CTmax1) = 0.99 and its mean is
+## Topt:
+prb <- 0.99
+mu <- Topt
+p_upper <- 1 - ((1 - prb) / 2)
+z <- qnorm(p_upper)
+sigma <- (CTmax1 - mu) / z
+
+curve(dnorm(x, mu, sigma),
+      from = CTmin1 - 2 * sigma,
+      to = CTmax1 + 2 * sigma)
+abline(v = CTmin1, lty = 2)
+abline(v = CTmax1, lty = 2)
+abline(v = Topt, lty = 2)
+
+## same, but mean as the mid-point between CTmin1 and CTmax1
+prb <- 0.99
+mu <- (CTmin1 + CTmax1) / 2
+p_upper <- 1 - ((1 - prb) / 2)
+z <- qnorm(p_upper)
+sigma <- (CTmax1 - mu) / z
+
+curve(dnorm(x, mu, sigma),
+      from = CTmin1 - 2 * sigma,
+      to = CTmax1 + 2 * sigma)
+abline(v = CTmin1, lty = 2)
+abline(v = CTmax1, lty = 2)
+abline(v = Topt, lty = 2)
+
+## We can think of a skew normal too, since, for this species, the thermal range
+## seems to be skewed
+
 ##---- GP model ----
 
 ## Define the Experimental (Literature) Data
-x_exp <- c(CTmin1, Topt, CTmax1) 
+x_exp <- seq(from = CTmin1 - 2 * sigma,
+             to = CTmax1 + 2 * sigma,
+             length.out = 5)
+f_exp <- qlogis(dnorm(x_exp, mu, sigma))
+## all these density values are pretty small, so I am setting it such that they
+## lie between -5 and 5
+
+lb <- -5
+ub <- 5
+f_exp <- (f_exp - min(f_exp)) / diff(range(f_exp))
+f_exp <- f_exp * (ub - lb) + lb
 
 ## Set the exact latent logit values for these points
 ## logit(-5) is ~0.0067 probability (practically zero)
 ## logit(5) is ~0.9933 probability (practically one)
-f_exp <- c(-4.0, 4.0, -4.0)
+
 
 ## 2. Field Observational Data
 
@@ -80,7 +124,9 @@ stan_data_cond <- list(
   y_obs = pa$pres,
   N_exp = length(x_exp),
   x_exp = x_exp,
-  f_exp = f_exp
+  f_exp = f_exp,
+  rho_thresh = sd(pa$trmax),
+  p_rho = 0.4
 )
 
 ## Compile the conditioned GP model

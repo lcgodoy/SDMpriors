@@ -5,6 +5,12 @@ data {
   int<lower=1> N_obs;
   array[N_obs] real x_obs;
   array[N_obs] int<lower = 0, upper = 1> y_obs;
+  real<lower = 0, upper = 1> p_rho;
+  real<lower = 0> rho_thresh;
+}
+transformed data {
+  real beta_rho;
+  beta_rho = - log(p_rho) / rho_thresh;
 }
 parameters {
   real<lower = 0> rho;
@@ -23,7 +29,8 @@ transformed parameters {
 }
 model {
   // Priors
-  rho ~ inv_gamma(2, 1);
+  // rho ~ inv_gamma(2, 1);
+  rho ~ exponential(beta_rho);
   alpha ~ std_normal();
   eta ~ std_normal();
   // Likelihood (Only evaluated on the real field data!)
